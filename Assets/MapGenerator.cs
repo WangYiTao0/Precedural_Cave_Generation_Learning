@@ -11,17 +11,31 @@ public class MapGenerator : MonoBehaviour
     [SerializeField] int randomFillPercent = 45;
     [SerializeField] string seed;
     [SerializeField] bool useRandomSeed;
-    int[,] map;
+    [SerializeField] int smoothmap = 5;
+    int[,] map; //1 wall 0 empty
 
     private void Start()
     {
         GenerateMap();
-        RandomFillMap();
+    }
+
+    private void Update()
+    {
+        if(Input.GetMouseButtonDown(0))
+        {
+            GenerateMap();
+        }
     }
 
     private void GenerateMap()
     {
         map = new int[width, height];
+        RandomFillMap();
+
+        for(int i = 0; i< smoothmap; i++)
+        {
+            SmoothMap();
+        }
     }
 
     void RandomFillMap()
@@ -31,15 +45,72 @@ public class MapGenerator : MonoBehaviour
             seed = Time.time.ToString();
         }
 
-        System.Random psuedoRandom = new System.Random(seed.GetHashCode());
+        //System.Random pseudoRandom = new System.Random(seed.GetHashCode());
+        UnityEngine.Random.InitState(seed.GetHashCode());
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                map[x, y] = psuedoRandom.Next(0, 100) < randomFillPercent ? 1 : 0;
+                if (x == 0 || x == width - 1 || y == 0 || y == height - 1)
+                {
+                    map[x, y] = 1;
+                }
+                else
+                {
+                    //map[x, y] = pseudoRandom.Next(0, 100) < randomFillPercent ? 1 : 0;
+                    map[x, y] = UnityEngine.Random.Range(0, 100) < randomFillPercent ? 1 : 0;
+
+                }
             }
         }
+    }
+
+    void SmoothMap()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                int neighbourWallTiles = GetSurroundingWallCount(x, y);
+                
+                if(neighbourWallTiles > 4)// if has over 4 wall
+                {
+                    map[x, y] = 1;
+                }
+                else if (neighbourWallTiles < 4)  // if has over 4 empty
+                {
+                    map[x, y] = 0;
+                }
+            
+            }
+        }
+    }
+
+    int GetSurroundingWallCount(int gridX, int gridY)
+    {
+        int wallCount = 0;
+
+         //loop 3x3
+        for (int neighbourX = gridX - 1; neighbourX <= gridX + 1; neighbourX++)
+        {
+            for (int neighbourY = gridY - 1; neighbourY <= gridY + 1; neighbourY++)   
+            {
+                if (neighbourX >= 0 && neighbourX < width && neighbourY >= 0 && neighbourY < height)   //  check edge
+                {
+                    if (neighbourX != gridX || neighbourY != gridY)  // check
+                    {
+                        wallCount += map[neighbourX, neighbourY];
+                    }
+                }
+                else
+                {
+                    wallCount++;
+                }
+            }
+        }
+
+        return wallCount;
     }
 
     private void OnDrawGizmos()
